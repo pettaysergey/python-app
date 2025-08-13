@@ -59,13 +59,23 @@ async def read_books(session: SessionDep) -> list[NewBook]:
 
 @app.get("/books/{id}", tags=["Книги"], summary='Получение книги')
 async def get_book(id: int, session: SessionDep):
-    query = select(BookModel)
-    elements = await session.execute(query)
-    result = elements.scalars().all()
+    book = await session.get(BookModel, id)
 
-    for book in result:
-        if (book.id == id):
-            return book
+    if (book):
+        return book
+
+    raise HTTPException(status_code=404, detail="Книга не найдена")
+
+
+@app.put("/books/{id}", tags=["Книги"], summary='Изменение книги')
+async def change_book(id: int, session: SessionDep):
+    book = await session.get(BookModel, id)
+
+    if (book):
+        book.title = 'HELLO!!!!!'
+        await session.commit()
+
+        return {"status": '200'}
 
     raise HTTPException(status_code=404, detail="Книга не найдена")
 
