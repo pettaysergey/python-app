@@ -64,7 +64,6 @@ async def get_book(id: int, session: SessionDep):
     result = elements.scalars().all()
 
     for book in result:
-        print(book)
         if (book.id == id):
             return book
 
