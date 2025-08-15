@@ -1,5 +1,6 @@
 from typing import Annotated
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -8,6 +9,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins="*")
+
 engine = create_async_engine('sqlite+aiosqlite:///books.db')
 new_session = async_sessionmaker(engine, expire_on_commit=False)
 
