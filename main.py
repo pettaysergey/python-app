@@ -1,98 +1,13 @@
-from typing import Annotated
-from fastapi import FastAPI, HTTPException, Depends
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from pydantic import BaseModel, Field, ConfigDict
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from api.base import main_router
 
 app = FastAPI()
+app.include_router(main_router)
 app.add_middleware(CORSMiddleware, allow_origins="*")
-
-engine = create_async_engine('sqlite+aiosqlite:///books.db')
-new_session = async_sessionmaker(engine, expire_on_commit=False)
-
-
-async def get_session():
-    async with new_session() as session:
-        yield session
-
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-class BookModel(Base):
-    __tablename__ = "books"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    author: Mapped[str]
-    title: Mapped[str]
-
-
-class NewBook(BaseModel):
-    author: str = Field(max_length=100)
-    title: str = Field(max_length=100)
-    id: int
-
-    model_config = ConfigDict(extra='forbid')
-
-
-@app.post("/setup_datebase", tags=["Книги"])
-async def setup_datebase():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
-        return {"status": "OK"}
-
-
-@app.get("/books", tags=["Книги"], summary='Список всем книг')
-async def read_books(session: SessionDep) -> list[NewBook]:
-    query = select(BookModel)
-    elements = await session.execute(query)
-    result = elements.scalars().all()
-
-    return result
-
-
-@app.get("/books/{id}", tags=["Книги"], summary='Получение книги')
-async def get_book(id: int, session: SessionDep):
-    book = await session.get(BookModel, id)
-
-    if (book):
-        return book
-
-    raise HTTPException(status_code=404, detail="Книга не найдена")
-
-
-@app.put("/books/{id}", tags=["Книги"], summary='Изменение книги')
-async def change_book(id: int, session: SessionDep):
-    book = await session.get(BookModel, id)
-
-    if (book):
-        book.title = 'HELLO!!!!!'
-        await session.commit()
-
-        return {"status": '200'}
-
-    raise HTTPException(status_code=404, detail="Книга не найдена")
-
-
-@app.post('/books', tags=["Книги"], summary="Добавление книги")
-async def create_book(data: NewBook, session: SessionDep):
-    new_book = BookModel(
-        title=data.title,
-        author=data.author
-    )
-    session.add(new_book)
-    await session.commit()
-
-    return {"status": 201}
 
 
 if __name__ == ("__main__"):
